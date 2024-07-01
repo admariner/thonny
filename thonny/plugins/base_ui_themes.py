@@ -225,6 +225,7 @@ def clam() -> BasicUiThemeSettings:
             "configure": {
                 "background": darker,
                 "activebackground": frame,
+                "hoverbackground": frame,
                 "indicatorbackground": frame,
             }
         },
@@ -409,6 +410,7 @@ def aqua() -> BasicUiThemeSettings:
                 "selectborderwidth": 0,
                 "insertwidth": 1,
                 "stipple": "",
+                "aqua_based": 1
             },
             "map": {
                 "foreground": [
@@ -600,6 +602,7 @@ def windows() -> CompoundUiThemeSettings:
                 "configure": {
                     "background": "systemButtonFace",
                     "activebackground": "systemWindow",
+                    "hoverbackground": "systemWindow",
                     #                    "indicatorbackground": "systemHighlight",
                     "indicatorbackground": "system3dLight",
                     "indicatorheight": 1,
@@ -728,9 +731,11 @@ def enhanced_aqua() -> CompoundUiThemeSettings:
             },
             "CustomNotebook.Tab": {
                 "configure": {
-                    "background": "systemWindowBackgroundColor2",
+                    "background": "systemWindowBackgroundColor",
                     "activebackground": "systemWindowBackgroundColor",
+                    "hoverbackground": "systemWindowBackgroundColor",
                     "indicatorbackground": "systemWindowBackgroundColor",
+                    "dynamic_border": 1,
                 }
             },
             "Listbox": {
@@ -747,6 +752,11 @@ def enhanced_aqua() -> CompoundUiThemeSettings:
                 },
             },
             "Heading": {"configure": {"topmost_pixels_to_hide": 2}},
+            "Vertical.TScrollbar": {
+                "configure": {
+                    "rightmost_pixels_to_hide": 1,
+                }
+            },
         },
     ]
 

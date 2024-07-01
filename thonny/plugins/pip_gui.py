@@ -15,6 +15,7 @@ from tkinter import messagebox, ttk
 from tkinter.messagebox import showerror, showwarning
 from typing import Dict, List, Optional, Tuple, Union
 
+import packaging.version
 from packaging.requirements import Requirement
 from packaging.utils import NormalizedName, canonicalize_name, canonicalize_version
 
@@ -35,7 +36,6 @@ from thonny.misc_utils import (
     download_and_parse_json,
     download_bytes,
     get_menu_char,
-    running_on_mac_os,
 )
 from thonny.running import BackendProxy, InlineCommandDialog, get_front_interpreter_for_subprocess
 from thonny.ui_utils import (
@@ -73,6 +73,8 @@ class PipFrame(ttk.Frame, ABC):
 
         self._create_widgets(self)
         self._update_summary()
+
+        self.bind("<<ThemeChanged>>", self._on_theme_changed, True)
 
     def _get_toolbar_frame_style(self) -> Optional[str]:
         return None
@@ -150,14 +152,14 @@ class PipFrame(ttk.Frame, ABC):
         )
         self.button_menu = tk.Menu(self, tearoff=False)
 
-        main_pw = tk.PanedWindow(
+        self.main_pw = tk.PanedWindow(
             parent,
             orient=tk.HORIZONTAL,
             background=lookup_style_option("TextPanedWindow", "background"),
             sashwidth=self.get_large_padding(),
             borderwidth=0,
         )
-        main_pw.grid(
+        self.main_pw.grid(
             row=2,
             column=0,
             sticky="nsew",
@@ -165,7 +167,7 @@ class PipFrame(ttk.Frame, ABC):
         parent.rowconfigure(2, weight=1)
         parent.columnconfigure(0, weight=1)
 
-        listframe = ttk.Frame(main_pw)
+        listframe = ttk.Frame(self.main_pw)
         listframe.rowconfigure(0, weight=1)
         listframe.columnconfigure(0, weight=1)
 
@@ -189,7 +191,7 @@ class PipFrame(ttk.Frame, ABC):
         self.listbox["yscrollcommand"] = list_scrollbar.set
 
         info_text_frame = tktextext.TextFrame(
-            main_pw,
+            self.main_pw,
             read_only=True,
             horizontal_scrollbar=False,
             # background=lookup_style_option("TFrame", "background"),
@@ -252,8 +254,8 @@ class PipFrame(ttk.Frame, ABC):
 
         # self.info_text.tag_configure()
 
-        main_pw.add(listframe)
-        main_pw.add(info_text_frame)
+        self.main_pw.add(listframe)
+        self.main_pw.add(info_text_frame)
 
         self._version_menu = tk.Menu(self.info_text, tearoff=False)
 
@@ -548,7 +550,7 @@ class PipFrame(ttk.Frame, ABC):
             if dist_info_future.done() and version_list_future.done():
                 try:
                     info = dist_info_future.result()
-                    versions = version_list_future.result()
+                    version_list_future.result()  # will be cached
                 except Exception as e:
                     logger.exception("Error downloading")
                     self._append_info_text(
@@ -556,13 +558,13 @@ class PipFrame(ttk.Frame, ABC):
                     )
                     self._set_state("idle")
                 else:
-                    self._complete_show_package_info(name, info, versions)
+                    self._complete_show_package_info(info)
             else:
                 get_workbench().after(200, poll_fetch_complete)
 
         poll_fetch_complete()
 
-    def _complete_show_package_info(self, name, dist_info: DistInfo, version_list: List[str]):
+    def _complete_show_package_info(self, dist_info: DistInfo):
         self._set_state("idle")
         assert self._version_button is not None
         self._version_button.configure(state="normal")
@@ -647,7 +649,15 @@ class PipFrame(ttk.Frame, ABC):
         variable = tk.StringVar(self, value=self._current_dist_info.version)
         installed_version_is_in_list = False
 
-        for version in reversed(versions):
+        def parse_version(ver_str):
+            try:
+                ver = packaging.version.Version(ver_str)
+            except packaging.version.InvalidVersion:
+                ver = packaging.version.Version("0.0.1")
+
+            return ver, ver_str
+
+        for version in sorted(versions, key=parse_version, reverse=True):
             if canonicalize_version(version) == installed_version:
                 installed_version_is_in_list = True
 
@@ -971,6 +981,13 @@ class PipFrame(ttk.Frame, ABC):
 
     def get_small_padding(self):
         return ems_to_pixels(0.6)
+
+    def _on_theme_changed(self, event):
+        self.info_text.configure(
+            background=lookup_style_option("Text", "background"),
+            foreground=lookup_style_option("Text", "foreground"),
+        )
+        self.main_pw.configure(background=lookup_style_option("Text", "background"))
 
 
 class BackendPipFrame(PipFrame):
