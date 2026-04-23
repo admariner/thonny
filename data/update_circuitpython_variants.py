@@ -20,7 +20,10 @@ base_url = "https://circuitpython.org/downloads"
 
 PREV_RELEVANT_VERSION = "9.2.9"
 RELEVANT_FAMILIES = {
-    "atmel-samd",
+    "samd21",
+    "samd51",
+    "same51",
+    "same54",
     "esp32",
     "esp32s2",
     "esp32s3",
@@ -44,16 +47,22 @@ class IndexParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: Dict[str, str]):
         if tag == "div" and get_attr_value(attrs, "class") == "download":
-            data_id = get_attr_value(attrs, "data-id")
             self.variants.append(
                 {
                     "_id": get_attr_value(attrs, "data-id"),
                     "vendor": get_attr_value(attrs, "data-manufacturer"),
                     "model": get_attr_value(attrs, "data-name"),
                     "family": get_attr_value(attrs, "data-mcufamily"),
-                    "info_url": f"https://circuitpython.org/board/{data_id}/",
                 }
             )
+        if (tag == "a"
+            and self.variants
+            and "info_url" not in self.variants[-1]
+            and get_attr_value(attrs, "href")
+            and get_attr_value(attrs, "href").startswith("/board/")
+        ):
+            self.variants[-1]["info_url"] = f'https://circuitpython.org{get_attr_value(attrs, "href")}'
+
 
 
 parser = IndexParser()
@@ -62,8 +71,6 @@ parser = IndexParser()
 parser.feed(read_page(base_url))
 
 all_variants = list(filter(lambda v: v["family"] in RELEVANT_FAMILIES, parser.variants))
-
-cant_determine_samd = []
 
 for i, variant in enumerate(all_variants):
     print("Processing", i + 1, "of", len(all_variants), variant)
@@ -92,31 +99,8 @@ for i, variant in enumerate(all_variants):
         variant["family"] = "rp2"
     elif variant["family"].startswith("nrf52"):
         variant["family"] = "nrf52"
-    elif variant["family"] == "atmel-samd":
-        if "M0" in variant["model"] or "SAMD21" in variant["model"]:
-            variant["family"] = "samd21"
-        elif "M4" in variant["model"]:
-            variant["family"] = "samd51"
-        else:
-            try:
-                samd_keywords = find_keywords(
-                    f"https://raw.githubusercontent.com/adafruit/circuitpython/main/ports/atmel-samd/boards/{variant['_id']}/mpconfigboard.h",
-                    {"SAMD21", "SAMD51"},
-                )
-            except:
-                samd_keywords = find_keywords(variant["info_url"], {"SAMD21", "SAMD51"})
-
-            if samd_keywords == {"SAMD21"}:
-                variant["family"] = "samd21"
-            elif samd_keywords == {"SAMD51"}:
-                variant["family"] = "samd51"
-            else:
-                cant_determine_samd.append(variant)
 
 print(f"Got {len(all_variants)} variants")
-
-for variant in cant_determine_samd:
-    print("Could not determine SAMD variant for", variant)
 
 for variant in all_variants:
     # https://github.com/thonny/thonny/discussions/3181
@@ -129,7 +113,7 @@ for variant in all_variants:
 save_variants(
     all_variants,
     ["uf2"],
-    {"rp2", "samd21", "samd51", "nrf51", "nrf52", "esp32s2", "esp32s3"},
+    {"rp2", "samd21", "samd51", "same51", "same54", "nrf51", "nrf52", "esp32s2", "esp32s3"},
     "circuitpython-variants-uf2.json",
 )
 
