@@ -32,7 +32,7 @@ import sys
 #       This is the magic step.
 #       NB! This seems to enable Thonny menu instead of Python menu
 # 4. During interpreter initialization, because PYTHONEXECUTABLE is defined,
-#    sys.executable may get set to an useless value.
+#    sys.executable may get set to an unuseful value.
 #
 # Now fix up the execution environment before importing thonny.
 
@@ -61,5 +61,5 @@ for idx, value in enumerate(sys.argv):
 
 # Now it is safe to import thonny.
 if __name__ == '__main__':
-    import thonny.main
-    thonny.main.run()
+    import thonny
+    thonny.launch()
